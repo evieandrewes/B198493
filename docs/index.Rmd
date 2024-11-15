@@ -1,30 +1,98 @@
 ---
-title: "Assessment"
+title: "Impact of the COVID-19 Pandemic on Age-Related Disease"
 author: "Evie Andrewes"
 date: "2024-11-01"
 output: html_document
 ---
 
-```{r setup, include=FALSE}
-knitr::opts_chunk$set(echo = TRUE)
+From the 2011 to the 2022 census, there was an additional 80,700 people in Scotland who reported bad or very bad health. This is thought to be due to an aging population. However, this report will aim to deduce if this increase in age-related health conditions was accelerated because of the COVID-19 pandemic.
+
+
+## First steps
+
+Firstly, we need to load in the libraries we need for our project.
+
+```{r setup,results='hide',message=FALSE, warning=FALSE}
+library(tidyverse)
+library(janitor)
+library(gt) 
+library(here)
 ```
 
-## R Markdown
+Some of the most common age-related diseases in Scotland include Cardiovascular Disease, hypertension and arthritis. To begin, let's look at the number of prescriptions of common hypertension medications, like doxazosin, amlodipine and atenolol, in a month for each health board in Scotland pre-pandemic and post-pandemic.
 
-This is an R Markdown document. Markdown is a simple formatting syntax for authoring HTML, PDF, and MS Word documents. For more details on using R Markdown see <http://rmarkdown.rstudio.com>.
+```{r first,results='hide',message=FALSE, warning=FALSE}
+data_august2019 <- read_csv("https://www.opendata.nhs.scot/dataset/84393984-14e9-4b0d-a797-b288db64d088/resource/5c667230-4201-4a09-949d-3e6cc3a4ec19/download/pitc201908.csv") %>% 
+  clean_names()
 
-When you click the **Knit** button a document will be generated that includes both content as well as the output of any embedded R code chunks within the document. You can embed an R code chunk like this:
+data_august2022 <- read_csv("https://www.opendata.nhs.scot/dataset/84393984-14e9-4b0d-a797-b288db64d088/resource/49fa5784-be06-4015-bc6d-9b5db8726473/download/pitc202208.csv") %>% 
+  clean_names()
 
-```{r cars}
-summary(cars)
+HB_fullnames <- read_csv("https://www.opendata.nhs.scot/dataset/9f942fdb-e59e-44f5-b534-d6e17229cc7b/resource/652ff726-e676-4a20-abda-435b98dd7bdc/download/hb14_hb19.csv") %>% 
+  clean_names()
+
+data_august2019_joined <- data_august2019 %>% 
+  full_join(HB_fullnames, by = c("hbt2014" = "hb")) %>% 
+  select(hb_name,bnf_item_description,paid_quantity)
+
+data_august2022_joined <- data_august2022 %>% 
+  full_join(HB_fullnames, by = c("hbt" = "hb")) %>% 
+  select(hb_name,bnf_item_description,paid_quantity)
+
+hypertension_2022_summary <- data_august2022_joined %>%
+  mutate(drug_type = case_when(
+    str_detect(bnf_item_description, "DOXAZOSIN") ~ "Doxazosin Perscription",
+    str_detect(bnf_item_description, "ATENOLOL") ~ "Atenolol Perscription",
+    str_detect(bnf_item_description, "AMLODIPINE") ~ "Amlodipine Perscription"
+  )) %>%
+  filter(!is.na(drug_type)) %>%
+  group_by(hb_name, drug_type) %>%
+  summarize(total_paid_quantity = sum(paid_quantity)) %>% 
+  mutate(year = 2022)
+
+hypertension_2019_summary <- data_august2019_joined %>%
+  mutate(drug_type = case_when(
+    str_detect(bnf_item_description, "DOXAZOSIN") ~ "Doxazosin Perscription",
+    str_detect(bnf_item_description, "ATENOLOL") ~ "Atenolol Perscription",
+    str_detect(bnf_item_description, "AMLODIPINE") ~ "Amlodipine Perscription"
+  )) %>%
+  filter(!is.na(drug_type)) %>%
+  group_by(hb_name, drug_type) %>%
+  summarize(total_paid_quantity = sum(paid_quantity)) %>% 
+  mutate(year = 2019)
+
+combined_summary <- full_join(
+  hypertension_2022_summary, 
+  hypertension_2019_summary)
+
 ```
 
-## Including Plots
+We can now use the data that we have filtered to create a plot.
 
-You can also embed plots, for example:
-
-```{r pressure, echo=FALSE}
-plot(pressure)
+```{r plot1}
+ggplot(combined_summary, aes(x = hb_name, y = total_paid_quantity, fill = drug_type)) +
+  coord_flip() +
+  geom_bar(stat = "identity") +
+  facet_wrap(~ year) +
+  labs(
+    title = "Hypertension Prescriptions in August 2019 and August 2022",
+    x = "Health Board",
+    y = "Total Paid Quantity",
+    fill = "Drug Type") +
+  scale_y_continuous(labels = scales::label_number()) +
+  theme(plot.title = element_text(hjust = 0.5), axis.text.x = element_text(angle = 45, hjust = 1))
 ```
 
-Note that the `echo = FALSE` parameter was added to the code chunk to prevent printing of the R code that generated the plot.
+## Results
+
+The graph shows a relatively small increase in Hypertension medication prescriptions from August 2019 to August 2022. However, we are looking at extremely large numbers, and at only 2 months across 3 years, so this is difficult to see. There is a particularly high number of Hypertension medications prescribed in Greater Glasgow and Clyde. Why is this? Next we could look at hypertension medications across 6 months in Greater Glasgow and Clyde in 2019 and 2022 respectively...
+
+Note: Generative AI was used only if internet research could not help to identify a new technique not already used in class. For example, to show how to use case_when() to combine all prescriptions of a medication type. No code was directly copied from generative AI. (This use of Generative AI can be altered for final submission if it is not in line with assignment guidelines).
+
+References:
+
+https://www.nhsinform.scot/illnesses-and-conditions/cardiovascular-disease/risk-factors-for-cardiovascular-disease/high-blood-pressure-hypertension/
+
+https://www.scotlandscensus.gov.uk/2022-results/scotland-s-census-2022-health-disability-and-unpaid-care/
+
+https://www.opendata.nhs.scot/dataset/prescriptions-in-the-community/resource/49fa5784-be06-4015-bc6d-9b5db8726473
