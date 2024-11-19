@@ -19,7 +19,7 @@ library(gt)
 library(here)
 ```
 
-Some of the most common age-related diseases in Scotland include Cardiovascular Disease, hypertension and arthritis. To begin, let's look at the number of prescriptions of common hypertension medications, like doxazosin, amlodipine and atenolol, in a month for each health board in Scotland pre-pandemic and post-pandemic.
+Some of the most common age-related diseases in Scotland include cardiovascular disease, hypertension and arthritis. To begin, let's look at the number of prescriptions of common hypertension medications, like doxazosin, amlodipine and atenolol, in a month for each health board in Scotland pre-pandemic and post-pandemic.
 
 ```{r first,results='hide',message=FALSE, warning=FALSE}
 data_august2019 <- read_csv("https://www.opendata.nhs.scot/dataset/84393984-14e9-4b0d-a797-b288db64d088/resource/5c667230-4201-4a09-949d-3e6cc3a4ec19/download/pitc201908.csv") %>% 
