@@ -1,11 +1,10 @@
 ---
-title: "Impact of the COVID-19 Pandemic on Age-Related Disease Prescriptions"
+title: "Impact of the COVID-19 Pandemic on Age-Related Disease Prescriptions Across Scotland"
 author: "Evie Andrewes"
-date: "2024-11-01"
+date: "`r Sys.Date()`"
 output: 
   html_document:
-    theme: readable
-    highlight: haddock
+    theme: flatly
     center: true
     toc: true
     toc_float: true
@@ -13,104 +12,125 @@ output:
     code_folding: hide
 ---
 
-From the 2011 to the 2022 census, there was an additional 80,700 people in Scotland who reported bad or very bad health. This is thought to be due to an aging population. This report will aim to deduce if the COVID-19 pandemic lead to a significant increase in prescriptions for age-related diseases.
+From the 2011 to the 2022 census, there was an additional 80,700 people in Scotland who reported bad or very bad health. This is thought to be due to an *aging population.* As a result, this report will aim to deduce if during the COVID-19 pandemic there was a *significant increase* in prescriptions for age-related diseases across Scotland.
 
 ## Hypertension Perscriptions Across Scotland
 
 ### First Steps
 
-Firstly, we need to load in the libraries we need for our project.
+Some of the most common age-related diseases in Scotland include **cardiovascular disease, hypertension (high blood pressure) and arthritis.**
+Before we start exploring perscriptions for these diseases, let's load in our libraries.
 
 ```{r setup,results='hide',message=FALSE, warning=FALSE}
 library(tidyverse)
 library(janitor)
-library(purrr)
 library(gt) 
 library(here)
+library(glue)
 ```
 
 ### Exploring and Filtering our Data
 
-Some of the most common age-related diseases in Scotland include cardiovascular disease, hypertension (high blood pressure) and arthritis. To begin, let's look at the number of prescriptions of common hypertension medications, like Doxazosin, Amlodipine, Bisoprolol and Atenolol, in a month for each health board in Scotland pre-pandemic (August 2019) and post-pandemic (August 2022).
+To begin, let's look at the number of prescriptions of common hypertension medications, like doxazosin, amlodipine, bisoprolol and atenolol, in a month for each health board in Scotland pre-pandemic (August 2019) and post-pandemic (August 2022).
 
 ```{r first, results='hide', message=FALSE, warning=FALSE}
 
-load_clean_data <- function(url) {
+`load_clean_data` <- function(url) {
   read_csv(url) %>%
     clean_names()} 
+#Creates a function so loading and cleaning data from a url can be streamlined. This will be useful throughout the project.
 
-#Creates a function so loading and cleaning data from a url can be streamlined 
-#(this will be useful throughout our project)
-
-data_hypertension_hbs <- c(
+data_and_hbs <- c(
   "data_august2019" = "https://www.opendata.nhs.scot/dataset/84393984-14e9-4b0d-a797-b288db64d088/resource/5c667230-4201-4a09-949d-3e6cc3a4ec19/download/pitc201908.csv",
   "data_august2022" = "https://www.opendata.nhs.scot/dataset/84393984-14e9-4b0d-a797-b288db64d088/resource/49fa5784-be06-4015-bc6d-9b5db8726473/download/pitc202208.csv",
   "HB_fullnames" = "https://www.opendata.nhs.scot/dataset/9f942fdb-e59e-44f5-b534-d6e17229cc7b/resource/652ff726-e676-4a20-abda-435b98dd7bdc/download/hb14_hb19.csv")
 
-hypertension_datasets_with_hbs <- data_hypertension_hbs %>% 
+clean_datasets_with_hbs <- data_and_hbs %>% 
   map(~ load_clean_data(.x))
-#Here the map function is loading and cleaning all of the data
+#Here the map function is loading and cleaning all of the data.
 
-joined_hypertension_datasets <-  map(c("data_august2019", "data_august2022"), ~ {hypertension_datasets_with_hbs %>%
-    pluck(.x) %>%
-    full_join(hypertension_datasets_with_hbs %>% pluck("HB_fullnames"), by = if (.x == "data_august2019") c("hbt2014" = "hb") else c("hbt" = "hb")) %>%
-    select(hb_name, bnf_item_description, paid_quantity)})
-#Here map and pluck are used to pull the datasets that we want from the data that was loaded in
-#and they are joined by HB name (depending on what this variable is called) 
+joined_datasets <- c("data_august2019", "data_august2022") %>% 
+  map(~ clean_datasets_with_hbs[[.x]] %>%
+    full_join(clean_datasets_with_hbs$HB_fullnames,by = if (.x == "data_august2019") c("hbt2014" = "hb") else c("hbt" = "hb")) %>%
+    select(hb_name, bnf_item_description, paid_quantity))
+#Here map is used to pull the datasets that we want from the data that was loaded in. They are joined by HB name (depending on what this variable is called). We use [[]] for .x because it is a changing or dynamic variable.
 
+hypertension_drugs <- c(
+  "DOXAZOSIN" = "Doxazosin Prescriptions", 
+  "BISOPROLOL" = "Bisoprolol Prescriptions", 
+  "AMLODIPINE" = "Amlodipine Prescriptions", 
+  "ATENOLOL" = "Atenolol Prescriptions")
+# Here a named vector is created for our hypertension drugs.
 
-combined_hypertension_summary <- map2_df(
-  joined_hypertension_datasets,
-  c(2019, 2022),
-  ~ .x %>%
-    mutate(drug_type = case_when(
-      str_detect(bnf_item_description, "DOXAZOSIN") ~ "Doxazosin Prescription",
-      str_detect(bnf_item_description, "BISOPROLOL") ~ "Bisoprolol Prescription",
-      str_detect(bnf_item_description, "AMLODIPINE") ~ "Amlodipine Prescription", str_detect(bnf_item_description, "ATENOLOL") ~ "Atenolol Prescription"
-    )) %>%
+combined_hypertension_summary <- joined_datasets %>%
+  map2_df(c(2019, 2022), ~ .x %>%
+    mutate(drug_type = str_extract(bnf_item_description, paste(names(hypertension_drugs), collapse = "|")),
+           drug_type = hypertension_drugs[drug_type]) %>%
     filter(!is.na(drug_type)) %>%
     group_by(hb_name, drug_type) %>%
     summarize(total_paid_quantity = sum(paid_quantity)) %>%
-    mutate(year = .y))
-#Here the joined datasets are combined,
-#the hypertension medications are pulled out using case_when and str_detect, 
-#Map2_df is used because there are 2 pieces of information we want to iterate over
-#and the output should be a dataframe.
+      mutate(year = .y))
+#Now the named vector can be used to pull out the drugs of interest using names and str_extract. This returns the value we want instead of TRUE/FALSE like str_detect.The year column is created using the second input of the map2_df function (y).
 
 ```
 
-The prescription and health board data has now been filtered to show the number of each Hypertension medication for each health board in August 2019 and August 2022. Now let's plot a lollipop chart that shows the difference between the number of prescriptions in August 2019 and August 2022 to see how they've changed:
+The prescription and health board data has been filtered to show the number of each hypertension medication for each health board in August 2019 and August 2022. Now let's plot a lollipop chart that shows **the difference between the number of prescriptions in August 2019 and August 2022** to see how they've changed:
 
-```{r plot 1, fig.dim = c(8, 6), fig.cap = "Lollipop Chart showing Difference in Hypertension Perscriptions from 2019 to 2022", message=FALSE, warning=FALSE}
+```{r plot 1, fig.dim = c(8, 6), fig.cap = "Lollipop Chart showing Difference in Hypertension Perscriptions in a Month from 2019 to 2022 across Scotland", message=FALSE, warning=FALSE}
 combined_hypertension_summary_diff <- combined_hypertension_summary %>%
   group_by(hb_name, drug_type) %>%
-  summarize(
-    total_2019 = sum(total_paid_quantity[year == 2019]),
-    total_2022 = sum(total_paid_quantity[year == 2022])) %>%
-  mutate(diff = total_2022 - total_2019) %>% 
+  pivot_wider(names_from = year, values_from = total_paid_quantity) %>%
+  mutate(diff = `2022` - `2019`) %>% 
   filter(!is.na(diff))
 
-ggplot(combined_hypertension_summary_diff, aes(x = diff, y = hb_name, color = drug_type)) +
-  geom_segment(aes(xend = 0, yend = hb_name), size = 0.5) +
+hypertension_plot <- ggplot(combined_hypertension_summary_diff, aes(x = diff, y = hb_name, color = drug_type)) +
+  geom_segment(aes(xend = 0, yend = hb_name), linewidth = 0.5) +
   geom_point(size = 3) +
   coord_flip() +
-  labs(
-    title = "Difference in Hypertension Prescriptions from August 2019 to August 2022",
-    subtitle = "by Health Board and Drug Type",
-    x = "Change in Total Perscriptions",
-    y = "Health Board",
-    color = "Drug Type") +
+  labs(title = "Difference in Hypertension Prescriptions from August 2019 to August 2022", subtitle = "by Health Board and Drug Type", x = "Change in Total Perscriptions", y = "Health Board", color = "Drug Type") +
   scale_x_continuous(labels = scales::label_number()) +
-  theme(plot.title = element_text(hjust = 0.5), plot.subtitle = element_text(hjust = 0.5), axis.text.x =
-  element_text(angle = 45, hjust = 1))
+  theme(plot.title = element_text(hjust = 0.5), plot.subtitle = element_text(hjust = 0.5), axis.text.x = element_text(angle = 45, hjust = 1))
+
+hypertension_plot
 
 ```
 
-### 
+### Chart Results
 
-All of the drugs show a significant increase in prescriptions from 2019 to 2022 apart from Atenolol. This is because Atenolol and Bisoprolol are both beta-blockers, but Bisoprolol has shown to be more heart specific and therefore it has less side effects. This means that many providers have been switching patients to Bisoprolol in recent years. There is an especially significant increase in hypertension prescriptions in Glasgow and Greater Clyde, and Lothian. Let's take a closer look at these areas in particular, and see how these prescriptions changed during the peak of the COVID-19 pandemic.
+All of the drugs show a significant increase in prescriptions from 2019 to 2022 **apart from atenolol**. This is because atenolol and bisoprolol are both beta-blockers, but bisoprolol has shown to be more heart specific and therefore it has less side effects. This means that many providers have been switching patients to bisoprolol in recent years. There is an especially significant increase in hypertension prescriptions in *NHS Greater Glasgow and Clyde and NHS Lothian*, most likely due to these areas being well-populated. Let's take a clearer look at the data from these areas by displaying it in a table:
 
-Note: Generative AI was used only if internet research could not help to identify a new technique not already used in class. For example, to show how to use case_when() to combine all prescriptions of a medication type. It was also for troubleshooting if code errors could not be identified. No code was directly copied from generative AI.
+```{r table 1, c(8, 6), fig.cap = "Table showing Difference in Hypertension Perscriptions in a month from 2019 to 2022 in NHS Lothian and NHS Greater Glasgow and Clyde", message=FALSE, warning=FALSE}
+
+hypertension_table <- combined_hypertension_summary_diff %>%
+  filter(hb_name %in% c("NHS Lothian", "NHS Greater Glasgow and Clyde")) %>%
+  gt(rowname_col = "drug_type", groupname_col = "hb_name") %>%
+  tab_header(title = "Hypertension Perscriptions in August for Hypertension from 2019 to 2022", subtitle = "Data from NHS Lothian and NHS Greater Glasgow and Clyde") %>% 
+  cols_label(hb_name = "Health Board Name",
+    drug_type = "Drug Type",
+    diff = "Difference in Perscriptions",
+   `2019` = "August 2019",
+   `2022` = "August 2022") %>% 
+  cols_align(align = "center", columns = diff) %>% 
+  fmt_number(n_sigfig = 4, sep_mark = ",", decimals = 0) %>% 
+  summary_rows(columns = diff, fns = list("Total Difference" = ~sum(.)), formatter = fmt_number, decimals = 0) %>%
+  grand_summary_rows(columns = diff, fns = list("Overall Difference" = ~sum(.)), formatter = fmt_number, decimals = 0)
+  
+hypertension_table
+
+```
+
+### Table Results
+
+From this table, we can see the number of prescriptions in a month for hypertension has increased by **600,000** from August 2019 to August 2022 in NHS Lothian and Greater Glasgow and Clyde alone. This indicates a huge increase in hypertension prescriptions over the COVID-19 pandemic.
+
+```{r second, results='hide', message=FALSE, warning=FALSE}
+
+
+```
+
+## Use of Generative AI
+
+Generative AI was used only if internet research could not help to identify a new technique not already used in class. For example, to show how to use case_when() to combine all prescriptions of a medication type. It was also used for troubleshooting if code errors could not be identified using internet research. No code was directly copied from generative AI.
 
 References:
 
