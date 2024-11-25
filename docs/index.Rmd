@@ -1,5 +1,5 @@
 ---
-title: "Impact of the COVID-19 Pandemic on Age-Related Disease Prescriptions Across Scotland"
+title: "Impact of the COVID-19 Pandemic on Hypertension Prescriptions Across Scotland"
 author: "Evie Andrewes"
 date: "`r Sys.Date()`"
 output: 
@@ -12,21 +12,20 @@ output:
     code_folding: hide
 ---
 
-From the 2011 to the 2022 census, there was an additional 80,700 people in Scotland who reported bad or very bad health. This is thought to be due to an *aging population.* As a result, this report will aim to deduce if during the COVID-19 pandemic there was a *significant increase* in prescriptions for age-related diseases across Scotland.
+From the 2011 to the 2022 census, there was an additional 80,700 people in Scotland who reported bad or very bad health. This is thought to be due to an *aging population.* One of the most common age-related diseases is hypertension (high blood pressure). This report will aim to deduce if during the COVID-19 pandemic there was a *significant increase* in prescriptions for hypertension across Scotland.
 
-## Hypertension Perscriptions Across Scotland
+## Hypertension Perscriptions Across Scotland 
 
 ### First Steps
 
-Some of the most common age-related diseases in Scotland include **cardiovascular disease, hypertension (high blood pressure) and arthritis.**
-Before we start exploring perscriptions for these diseases, let's load in our libraries.
+Before we start exploring prescriptions for hypertension, let's load in the libraries we will need.
 
 ```{r setup,results='hide',message=FALSE, warning=FALSE}
 library(tidyverse)
 library(janitor)
 library(gt) 
 library(here)
-library(glue)
+library(sf)
 ```
 
 ### Exploring and Filtering our Data
@@ -52,7 +51,7 @@ clean_datasets_with_hbs <- data_and_hbs %>%
 joined_datasets <- c("data_august2019", "data_august2022") %>% 
   map(~ clean_datasets_with_hbs[[.x]] %>%
     full_join(clean_datasets_with_hbs$HB_fullnames,by = if (.x == "data_august2019") c("hbt2014" = "hb") else c("hbt" = "hb")) %>%
-    select(hb_name, bnf_item_description, paid_quantity))
+      select(hb_name, bnf_item_description, paid_quantity))
 #Here map is used to pull the datasets that we want from the data that was loaded in. They are joined by HB name (depending on what this variable is called). We use [[]] for .x because it is a changing or dynamic variable.
 
 hypertension_drugs <- c(
@@ -74,7 +73,7 @@ combined_hypertension_summary <- joined_datasets %>%
 
 ```
 
-The prescription and health board data has been filtered to show the number of each hypertension medication for each health board in August 2019 and August 2022. Now let's plot a lollipop chart that shows **the difference between the number of prescriptions in August 2019 and August 2022** to see how they've changed:
+The prescription and health board data has been filtered to show the number of each hypertension medication for each health board in August 2019 and August 2022. Now let's plot a lollipop chart that shows **the difference between the number of prescriptions in August 2019 and August 2022** to see how they've changed.
 
 ```{r plot 1, fig.dim = c(8, 6), fig.cap = "Lollipop Chart showing Difference in Hypertension Perscriptions in a Month from 2019 to 2022 across Scotland", message=FALSE, warning=FALSE}
 combined_hypertension_summary_diff <- combined_hypertension_summary %>%
@@ -97,9 +96,9 @@ hypertension_plot
 
 ### Chart Results
 
-All of the drugs show a significant increase in prescriptions from 2019 to 2022 **apart from atenolol**. This is because atenolol and bisoprolol are both beta-blockers, but bisoprolol has shown to be more heart specific and therefore it has less side effects. This means that many providers have been switching patients to bisoprolol in recent years. There is an especially significant increase in hypertension prescriptions in *NHS Greater Glasgow and Clyde and NHS Lothian*, most likely due to these areas being well-populated. Let's take a clearer look at the data from these areas by displaying it in a table:
+All of the drugs show a significant increase in prescriptions from 2019 to 2022 **apart from atenolol**. This is because atenolol and bisoprolol are both beta-blockers, but bisoprolol has shown to be more heart specific and therefore it has less side effects. This means that many providers have been switching patients to bisoprolol in recent years. There is an especially significant increase in hypertension prescriptions in *NHS Greater Glasgow and Clyde and NHS Lothian*, most likely due to these areas being well-populated. Let's take a clearer look at the data from these areas by displaying it in a table.
 
-```{r table 1, c(8, 6), fig.cap = "Table showing Difference in Hypertension Perscriptions in a month from 2019 to 2022 in NHS Lothian and NHS Greater Glasgow and Clyde", message=FALSE, warning=FALSE}
+```{r table 1, fig.dim = c(8, 6), fig.cap = "Table showing Difference in Hypertension Perscriptions in a month from 2019 to 2022 in NHS Lothian and NHS Greater Glasgow and Clyde", message=FALSE, warning=FALSE}
 
 hypertension_table <- combined_hypertension_summary_diff %>%
   filter(hb_name %in% c("NHS Lothian", "NHS Greater Glasgow and Clyde")) %>%
@@ -121,10 +120,46 @@ hypertension_table
 
 ### Table Results
 
-From this table, we can see the number of prescriptions in a month for hypertension has increased by **600,000** from August 2019 to August 2022 in NHS Lothian and Greater Glasgow and Clyde alone. This indicates a huge increase in hypertension prescriptions over the COVID-19 pandemic.
+From this table, we can see the number of prescriptions in a month for hypertension has increased by **600,000** from August 2019 to August 2022 in NHS Lothian and Greater Glasgow and Clyde alone. This indicates a huge increase in hypertension prescriptions over the COVID-19 pandemic in these areas. 
+
+However, we also know these areas are very well populated, so we don't know how *proportional* this increase is to the general population. Let's load in some data about population size per health board, and create a spatial plot to visualize this:
 
 ```{r second, results='hide', message=FALSE, warning=FALSE}
 
+pop_health_board <- load_clean_data("https://www.opendata.nhs.scot/dataset/7f010430-6ce1-4813-b25c-f7f335bdc4dc/resource/27a72cc8-d6d8-430c-8b4f-3109a9ceadb1/download/hb2019_pop_est_14102024.csv")
+
+pop_health_board_filtered <- pop_health_board %>% 
+  select(year, hb, all_ages) %>% 
+  filter(year == "2019" | year == "2022")
+
+health_board_spatial_data <- st_read(here("data","NHS_healthboards_2019.shp")) %>% 
+  clean_names()
+
+total_hypertension_prescriptions <- combined_hypertension_summary %>%  group_by(hb_name, year) %>%
+  summarize(total_paid_quantity_all_drugs = sum(total_paid_quantity)) 
+
+total_hypertension_prescriptions <- total_hypertension_prescriptions %>%
+  mutate(hb_name = str_remove(hb_name, "^NHS\\s"))
+
+combined_spatial_data <- health_board_spatial_data %>% 
+  full_join(pop_health_board_filtered, by = c("hb_code" = "hb")) %>%
+  full_join(total_hypertension_prescriptions, by = c("hb_name" = "hb_name","year" = "year")) %>%
+  mutate(prescriptions_per_capita = total_paid_quantity_all_drugs / all_ages)
+```
+
+Now that we have the number of *hypertension prescriptions per capita* in each health board, lets plot our data:
+
+```{r plot 2, fig.dim = c(8,6), message=FALSE, warning=FALSE}
+
+ggplot(data = combined_spatial_data) +
+  geom_sf(aes(fill = prescriptions_per_capita)) +
+  scale_fill_viridis_c(name = "Prescriptions per Capita") +
+  facet_wrap(~ year) +
+  theme_void() +
+  labs(title = "Hypertension Prescriptions per Capita per Month",
+       subtitle = "Health Boards in Scotland (August 2019 & August 2022)",
+       caption = "Data source: NHS Scotland") +
+  theme(legend.position = "right", plot.title = element_text(hjust = 0.5), plot.subtitle = element_text(hjust = 0.5))
 
 ```
 
