@@ -31,20 +31,20 @@ library(sf)
 
 ### Exploring and Filtering our Data
 
-To begin, let's look at the number of prescriptions of common hypertension medications, like doxazosin, amlodipine, bisoprolol and atenolol [@hypertension][@betablockers], in a month for each health board in Scotland pre-pandemic (August 2019) and post-pandemic (August 2022).
+To begin, let's look at the number of prescriptions of common hypertension medications, like doxazosin, amlodipine, bisoprolol and atenolol [@hypertension] [@betablockers], in a month for each health board in Scotland pre-pandemic (August 2019) and post-pandemic (August 2022).
 
 ```{r first, results='hide', message=FALSE, warning=FALSE}
 
 `load_clean_data` <- function(url) {
   read_csv(url) %>%
     clean_names()} 
-#Creates a function so loading and cleaning data from a url can be streamlined. This will be useful throughout the project.
+#Creates a function so loading and cleaning data from a url can be streamlined.
 
 data_and_hbs <- c(
   "data_august2019" = "https://www.opendata.nhs.scot/dataset/84393984-14e9-4b0d-a797-b288db64d088/resource/5c667230-4201-4a09-949d-3e6cc3a4ec19/download/pitc201908.csv",
   "data_august2022" = "https://www.opendata.nhs.scot/dataset/84393984-14e9-4b0d-a797-b288db64d088/resource/49fa5784-be06-4015-bc6d-9b5db8726473/download/pitc202208.csv",
   "HB_fullnames" = "https://www.opendata.nhs.scot/dataset/9f942fdb-e59e-44f5-b534-d6e17229cc7b/resource/652ff726-e676-4a20-abda-435b98dd7bdc/download/hb14_hb19.csv")
-#Here is the links for Prescriptions from August 2019 and August 2022, as well as data about the names of different Health Boards accross Scotland.
+#Links for Prescriptions from August 2019 and August 2022, as well as data for the names of Health Boards across Scotland.
 
 clean_datasets_with_hbs <- data_and_hbs %>% 
   map(~ load_clean_data(.x))
@@ -54,7 +54,7 @@ joined_datasets <- c("data_august2019", "data_august2022") %>%
   map(~ clean_datasets_with_hbs[[.x]] %>%
     full_join(clean_datasets_with_hbs$HB_fullnames,by = if (.x == "data_august2019") c("hbt2014" = "hb") else c("hbt" = "hb")) %>%
       select(hb_name, bnf_item_description, paid_quantity))
-#Here map is used to pull the datasets that we want from the data that was loaded in. They are joined by HB name (depending on what this variable is called). We use [[]] for .x because it is a changing or dynamic variable.
+#Map is used to pull datasets that we want from the cleaned data. Then joined by HB name (depending on what this variable is called). We use [[]] for .x because it's a changing or dynamic variable.
 
 hypertension_drugs <- c(
   "DOXAZOSIN" = "Doxazosin Prescriptions", 
@@ -82,6 +82,7 @@ combined_hypertension_summary_diff <- combined_hypertension_summary %>%
   pivot_wider(names_from = year, values_from = total_paid_quantity) %>%
   mutate(diff = `2022` - `2019`) %>% 
   filter(!is.na(diff))
+#Calculates differences between drugs.
 
 hypertension_plot <- ggplot(combined_hypertension_summary_diff, aes(x = diff, y = hb_name, color = drug_type)) +
   geom_segment(aes(xend = 0, yend = hb_name), linewidth = 0.5) +
@@ -90,8 +91,8 @@ hypertension_plot <- ggplot(combined_hypertension_summary_diff, aes(x = diff, y 
   labs(title = "Difference in Hypertension Prescriptions from August 2019 to August 2022", subtitle = "by Health Board and Drug Type", x = "Change in Total Perscriptions", y = "Health Board", color = "Drug Type", caption = "Data source: Public Health Scotland") +
   scale_x_continuous(labels = scales::label_number()) +
   theme(plot.title = element_text(hjust = 0.5), plot.subtitle = element_text(hjust = 0.5), axis.text.x = element_text(angle = 45, hjust = 1))
-#Here the scales_x_continuous() function changes our y axis (as we have used coord_flip()) to non-scientific notation
-#geom_segment() was used to create the lollipop sticks on the graph
+#Here the scales_x_continuous() function changes our y axis (as we have used coord_flip()) to non-scientific notation.
+#geom_segment() was used to create the lollipop sticks on the graph.
 
 hypertension_plot
 ```
@@ -123,7 +124,7 @@ From this table, you can see the number of prescriptions in a month for hyperten
 
 ## Hypertension Prescriptions per Capita Across Scotland
 
-Let's load in some data about population size per health board, and use spatial data to visualize more proportional data:
+Let's load in some data about population size per health board, and use spatial data to visualize this:
 
 ```{r second, results='hide', message=FALSE, warning=FALSE}
 
@@ -144,7 +145,7 @@ total_hypertension_prescriptions <- combined_hypertension_summary %>%  group_by(
 
 total_hypertension_prescriptions <- total_hypertension_prescriptions %>%
   mutate(hb_name = str_remove(hb_name, "^NHS\\s"))
-#Here we use "str_remove" to remove "NHS " from the filtered total_hypertension_prescriptions Health Boards variable, because they don't have this Prefix in the spatial data.
+#Used str_remove to remove "NHS " from the total_hypertension_prescriptions Health Boards variable, as this prefix is not present in the spatial data.
 
 combined_spatial_data <- health_board_spatial_data %>% 
   full_join(pop_health_board_filtered, by = c("hb_code" = "hb")) %>%
@@ -165,10 +166,9 @@ hypertension_spatial <- ggplot(data = combined_spatial_data) +
   labs(title = "Hypertension Prescriptions per Capita per Month", subtitle = "Health Boards in Scotland (August 2019 & August 2022)", caption = "Data sources: Scottish Government, Public Health Scotland") +
   theme(legend.position = "right", plot.title = element_text(hjust = 0.5), plot.subtitle = element_text(hjust = 0.5))
 
-hypertension_spatial
-
 #scale_fill_viridis_c() gives the plot a continuous scale, which is a better representation of our data as hypertension prescriptions per capita per month is a continuous variable.
-#theme_void() is used to make the plot more clean and simplistic looking.
+
+hypertension_spatial
 ```
 
 ### Plot Results
