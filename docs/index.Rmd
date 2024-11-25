@@ -61,8 +61,7 @@ combined_hypertension_summary <- joined_datasets %>%
     group_by(hb_name, drug_type) %>%
     summarize(total_paid_quantity = sum(paid_quantity)) %>%
       mutate(year = .y))
-#Now the named vector can be used to pull out the drugs of interest using names and str_extract. This returns the value we want instead of TRUE/FALSE like str_detect.The year column is created using the second input of the map2_df function (y).
-
+#Now the named vector can be used to pull out the drugs of interest using names and str_extract. This returns the value for mutate we want instead of TRUE/FALSE like str_detect.The year column is created using the second input of the map2_df function (y).
 ```
 The prescription and health board data has been filtered to show the number of each hypertension medication for each health board in August 2019 and August 2022. Now let's plot a lollipop chart that shows *the difference between the number of prescriptions* in August 2019 and August 2022 to see how they've changed.
 ```{r plot 1, fig.dim = c(8, 6), message=FALSE, warning=FALSE}
@@ -129,7 +128,6 @@ combined_spatial_data <- health_board_spatial_data %>%
   full_join(total_hypertension_prescriptions, by = c("hb_name" = "hb_name","year" = "year")) %>%
   mutate(prescriptions_per_capita = total_paid_quantity_all_drugs / all_ages)
 #Creates a prescriptions per capita column.
-
 ```
 Now that the number of *hypertension prescriptions per capita* in each health board has been combined with spacial data, a plot can be created.
 ```{r plot 2, fig.dim = c(8,6), message=FALSE, warning=FALSE}
