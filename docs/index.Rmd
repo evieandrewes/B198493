@@ -15,7 +15,7 @@ output:
 
 From the 2011 to the 2022 census, there was an additional **80,700** people in Scotland who reported bad or very bad health. This is thought to be due to an *aging population* [@census]. One of the most common age-related diseases is hypertension, or high blood pressure, [@hypertension]. This report will aim to deduce if during the COVID-19 pandemic there was a *significant increase* in prescriptions for hypertension across Scotland.
 
-## Hypertension Perscriptions Across Scotland 
+## Hypertension Perscriptions per Drug Across Scotland
 
 ### First Steps
 
@@ -31,7 +31,7 @@ library(sf)
 
 ### Exploring and Filtering our Data
 
-To begin, let's look at the number of prescriptions of common hypertension medications, like doxazosin, amlodipine, bisoprolol and atenolol [@hypertension], in a month for each health board in Scotland pre-pandemic (August 2019) and post-pandemic (August 2022).
+To begin, let's look at the number of prescriptions of common hypertension medications, like doxazosin, amlodipine, bisoprolol and atenolol [@hypertension][@betablockers], in a month for each health board in Scotland pre-pandemic (August 2019) and post-pandemic (August 2022).
 
 ```{r first, results='hide', message=FALSE, warning=FALSE}
 
@@ -44,6 +44,7 @@ data_and_hbs <- c(
   "data_august2019" = "https://www.opendata.nhs.scot/dataset/84393984-14e9-4b0d-a797-b288db64d088/resource/5c667230-4201-4a09-949d-3e6cc3a4ec19/download/pitc201908.csv",
   "data_august2022" = "https://www.opendata.nhs.scot/dataset/84393984-14e9-4b0d-a797-b288db64d088/resource/49fa5784-be06-4015-bc6d-9b5db8726473/download/pitc202208.csv",
   "HB_fullnames" = "https://www.opendata.nhs.scot/dataset/9f942fdb-e59e-44f5-b534-d6e17229cc7b/resource/652ff726-e676-4a20-abda-435b98dd7bdc/download/hb14_hb19.csv")
+#Here is the links for Prescriptions from August 2019 and August 2022, as well as data about the names of different Health Boards accross Scotland.
 
 clean_datasets_with_hbs <- data_and_hbs %>% 
   map(~ load_clean_data(.x))
@@ -71,7 +72,6 @@ combined_hypertension_summary <- joined_datasets %>%
     summarize(total_paid_quantity = sum(paid_quantity)) %>%
       mutate(year = .y))
 #Now the named vector can be used to pull out the drugs of interest using names and str_extract. This returns the value we want instead of TRUE/FALSE like str_detect.The year column is created using the second input of the map2_df function (y).
-
 ```
 
 The prescription and health board data has been filtered to show the number of each hypertension medication for each health board in August 2019 and August 2022. Now let's plot a lollipop chart that shows *the difference between the number of prescriptions* in August 2019 and August 2022 to see how they've changed.
@@ -87,12 +87,13 @@ hypertension_plot <- ggplot(combined_hypertension_summary_diff, aes(x = diff, y 
   geom_segment(aes(xend = 0, yend = hb_name), linewidth = 0.5) +
   geom_point(size = 3) +
   coord_flip() +
-  labs(title = "Difference in Hypertension Prescriptions from August 2019 to August 2022", subtitle = "by Health Board and Drug Type", x = "Change in Total Perscriptions", y = "Health Board", color = "Drug Type") +
+  labs(title = "Difference in Hypertension Prescriptions from August 2019 to August 2022", subtitle = "by Health Board and Drug Type", x = "Change in Total Perscriptions", y = "Health Board", color = "Drug Type", caption = "Data source: Public Health Scotland") +
   scale_x_continuous(labels = scales::label_number()) +
   theme(plot.title = element_text(hjust = 0.5), plot.subtitle = element_text(hjust = 0.5), axis.text.x = element_text(angle = 45, hjust = 1))
+#Here the scales_x_continuous() function changes our y axis (as we have used coord_flip()) to non-scientific notation
+#geom_segment() was used to create the lollipop sticks on the graph
 
 hypertension_plot
-
 ```
 
 ### Chart Results
@@ -105,15 +106,12 @@ hypertension_table <- combined_hypertension_summary_diff %>%
   filter(hb_name %in% c("NHS Lothian", "NHS Greater Glasgow and Clyde")) %>%
   gt(rowname_col = "drug_type", groupname_col = "hb_name") %>%
   tab_header(title = "Hypertension Perscriptions in August for Hypertension from 2019 to 2022", subtitle = "Data from NHS Lothian and NHS Greater Glasgow and Clyde") %>% 
-  cols_label(hb_name = "Health Board Name",
-    drug_type = "Drug Type",
-    diff = "Difference in Perscriptions",
-   `2019` = "August 2019",
-   `2022` = "August 2022") %>% 
+  cols_label(hb_name = "Health Board Name", drug_type = "Drug Type", diff = "Difference in Perscriptions", `2019` = "August 2019", `2022` = "August 2022") %>% 
   cols_align(align = "center", columns = diff) %>% 
   fmt_number(n_sigfig = 4, sep_mark = ",", decimals = 0) %>% 
   summary_rows(columns = diff, fns = list("Total Difference" = ~sum(.)), formatter = fmt_number, decimals = 0) %>%
   grand_summary_rows(columns = diff, fns = list("Overall Difference" = ~sum(.)), formatter = fmt_number, decimals = 0)
+#Here formatter within summary and grand summary rows keeps the "," separators between numbers, but decimal has to be added to each function separately
   
 hypertension_table
 
@@ -121,13 +119,16 @@ hypertension_table
 
 ### Table Results
 
-From this table, you can see the number of prescriptions in a month for hypertension has increased by **600,000** from August 2019 to August 2022 in NHS Lothian and Greater Glasgow and Clyde alone. This indicates a huge increase in hypertension prescriptions over the COVID-19 pandemic in these areas. 
+From this table, you can see the number of prescriptions in a month for hypertension has increased by **600,000** from August 2019 to August 2022 in NHS Lothian and Greater Glasgow and Clyde alone. This indicates a huge increase in hypertension prescriptions over the COVID-19 pandemic in these areas. However, it is also known these areas are very well populated within Scotland, so it is unknown how *proportional* this increase is to the general population.
 
-However, it is also known these areas are very well populated within Scotland, so it is unknown how *proportional* this increase is to the general population. Let's load in some data about population size per health board, and create a spatial plot to visualize this:
+## Hypertension Prescriptions per Capita Across Scotland
+
+Let's load in some data about population size per health board, and use spatial data to visualize more proportional data:
 
 ```{r second, results='hide', message=FALSE, warning=FALSE}
 
 pop_health_board <- load_clean_data("https://www.opendata.nhs.scot/dataset/7f010430-6ce1-4813-b25c-f7f335bdc4dc/resource/27a72cc8-d6d8-430c-8b4f-3109a9ceadb1/download/hb2019_pop_est_14102024.csv")
+#Here is the data for population size per Health Board by age.
 
 pop_health_board_filtered <- pop_health_board %>% 
   select(year, hb, all_ages) %>% 
@@ -135,36 +136,49 @@ pop_health_board_filtered <- pop_health_board %>%
 
 health_board_spatial_data <- st_read(here("data","NHS_healthboards_2019.shp")) %>% 
   clean_names()
+#Here is the spacial data for Health Boards in Scotland. It has to be downloaded first before it can be read, but you can access it here: https://spatialdata.gov.scot/geonetwork/srv/api/records/f12c3826-4b4b-40e6-bf4f-77b9ed01dc14
 
 total_hypertension_prescriptions <- combined_hypertension_summary %>%  group_by(hb_name, year) %>%
   summarize(total_paid_quantity_all_drugs = sum(total_paid_quantity)) 
+#Combines all drug prescriptions.
 
 total_hypertension_prescriptions <- total_hypertension_prescriptions %>%
   mutate(hb_name = str_remove(hb_name, "^NHS\\s"))
+#Here we use "str_remove" to remove "NHS " from the filtered total_hypertension_prescriptions Health Boards variable, because they don't have this Prefix in the spatial data.
 
 combined_spatial_data <- health_board_spatial_data %>% 
   full_join(pop_health_board_filtered, by = c("hb_code" = "hb")) %>%
   full_join(total_hypertension_prescriptions, by = c("hb_name" = "hb_name","year" = "year")) %>%
   mutate(prescriptions_per_capita = total_paid_quantity_all_drugs / all_ages)
+#Creates a prescriptions per capita column.
 ```
 
 Now that the number of *hypertension prescriptions per capita* in each health board has been combined with spacial data, a plot can be created.
 
 ```{r plot 2, fig.dim = c(8,6), message=FALSE, warning=FALSE}
 
-ggplot(data = combined_spatial_data) +
+hypertension_spatial <- ggplot(data = combined_spatial_data) +
   geom_sf(aes(fill = prescriptions_per_capita)) +
   scale_fill_viridis_c(name = "Prescriptions per Capita") +
   facet_wrap(~ year) +
   theme_void() +
-  labs(title = "Hypertension Prescriptions per Capita per Month", subtitle = "Health Boards in Scotland (August 2019 & August 2022)") +
+  labs(title = "Hypertension Prescriptions per Capita per Month", subtitle = "Health Boards in Scotland (August 2019 & August 2022)", caption = "Data sources: Scottish Government, Public Health Scotland") +
   theme(legend.position = "right", plot.title = element_text(hjust = 0.5), plot.subtitle = element_text(hjust = 0.5))
 
+hypertension_spatial
+
+#scale_fill_viridis_c() gives the plot a continuous scale, which is a better representation of our data as hypertension prescriptions per capita per month is a continuous variable.
+#theme_void() is used to make the plot more clean and simplistic looking.
 ```
+
+### Plot Results
+
+This plot shows that actually, although hypertension prescriptions in NHS Lothian and NHS Greater Glasgow and Clyde increased the most, they actually increased proportionally population-wise to the rest of Scotland. From 2019 to 2022, there appears to be an increase of almost *2 prescriptions per capita per month*, which is an almost alarming amount. Interestingly, the areas with the highest amount of hypertension prescriptions per capita seem to be less well populated areas. Perhaps, as hypertension is an *age-related disease*, these areas might have aging populations. This would be an interesting next step to explore with the data we already have. Overall, it can be said with some certainty that hypertension prescriptions increased across Scotland over the COVID-19 Pandemic (from August 2019 to August 2022).
+
 
 ## Use of Generative AI
 
-Generative AI was used only if internet research could not help to identify a new technique not already used in class. For example, to show how to use case_when() to combine all prescriptions of a medication type. It was also used for troubleshooting if code errors could not be identified using internet research. No code was directly copied from generative AI.
+Generative AI was used only if internet research could not help to identify a new technique not already used in class. For example, to show how to use str_extract() to filter prescription data. It was also used for troubleshooting if code errors could not be identified using internet research. No code was directly copied from generative AI.
 
 ## References
 
