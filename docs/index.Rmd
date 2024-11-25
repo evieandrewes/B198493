@@ -12,7 +12,6 @@ output:
     number_sections: true
     code_folding: show
 ---
-
 ## Introduction
 From the 2011 to the 2022 census, there was an additional **80,700** people in Scotland who reported bad or very bad health. This is thought to be due to an *aging population* [@census]. One of the most common age-related diseases is hypertension, or high blood pressure, [@hypertension]. This report will aim to deduce if during the COVID-19 pandemic there was a *significant increase* in prescriptions for hypertension across Scotland.
 
@@ -25,29 +24,35 @@ library(gt)
 library(here)
 library(sf)
 #Libraries for project
+
 `load_clean_data` <- function(url) {
   read_csv(url) %>%
     clean_names()} 
 #Creates a function so loading and cleaning data from a url can be streamlined.
+
 data_and_hbs <- c(
   "data_august2019" = "https://www.opendata.nhs.scot/dataset/84393984-14e9-4b0d-a797-b288db64d088/resource/5c667230-4201-4a09-949d-3e6cc3a4ec19/download/pitc201908.csv",
   "data_august2022" = "https://www.opendata.nhs.scot/dataset/84393984-14e9-4b0d-a797-b288db64d088/resource/49fa5784-be06-4015-bc6d-9b5db8726473/download/pitc202208.csv",
   "HB_fullnames" = "https://www.opendata.nhs.scot/dataset/9f942fdb-e59e-44f5-b534-d6e17229cc7b/resource/652ff726-e676-4a20-abda-435b98dd7bdc/download/hb14_hb19.csv")
 #Links for Prescriptions from August 2019 and August 2022, as well as data for the names of Health Boards across Scotland.
+
 clean_datasets_with_hbs <- data_and_hbs %>% 
   map(~ load_clean_data(.x))
 #Here the map function is loading and cleaning all of the data.
+
 joined_datasets <- c("data_august2019", "data_august2022") %>% 
   map(~ clean_datasets_with_hbs[[.x]] %>%
     full_join(clean_datasets_with_hbs$HB_fullnames,by = if (.x == "data_august2019") c("hbt2014" = "hb") else c("hbt" = "hb")) %>%
       select(hb_name, bnf_item_description, paid_quantity))
 #Map is used to pull datasets that we want from the cleaned data. Then joined by HB name (depending on what this variable is called). We use [[]] for .x because it's a changing or dynamic variable.
+
 hypertension_drugs <- c(
   "DOXAZOSIN" = "Doxazosin Prescriptions", 
   "BISOPROLOL" = "Bisoprolol Prescriptions", 
   "AMLODIPINE" = "Amlodipine Prescriptions", 
   "ATENOLOL" = "Atenolol Prescriptions")
 #Here a named vector is created for our hypertension drugs.
+
 combined_hypertension_summary <- joined_datasets %>%
   map2_df(c(2019, 2022), ~ .x %>%
     mutate(drug_type = str_extract(bnf_item_description, paste(names(hypertension_drugs), collapse = "|")),
@@ -57,6 +62,7 @@ combined_hypertension_summary <- joined_datasets %>%
     summarize(total_paid_quantity = sum(paid_quantity)) %>%
       mutate(year = .y))
 #Now the named vector can be used to pull out the drugs of interest using names and str_extract. This returns the value we want instead of TRUE/FALSE like str_detect.The year column is created using the second input of the map2_df function (y).
+
 ```
 The prescription and health board data has been filtered to show the number of each hypertension medication for each health board in August 2019 and August 2022. Now let's plot a lollipop chart that shows *the difference between the number of prescriptions* in August 2019 and August 2022 to see how they've changed.
 ```{r plot 1, fig.dim = c(8, 6), message=FALSE, warning=FALSE}
@@ -65,7 +71,8 @@ combined_hypertension_summary_diff <- combined_hypertension_summary %>%
   pivot_wider(names_from = year, values_from = total_paid_quantity) %>%
   mutate(diff = `2022` - `2019`) %>% 
   filter(!is.na(diff))
-#Calculates differences between drugs.
+#Calculates difference between drug prescriptions by year.
+
 hypertension_plot <- ggplot(combined_hypertension_summary_diff, aes(x = diff, y = hb_name, color = drug_type)) +
   geom_segment(aes(xend = 0, yend = hb_name), linewidth = 0.5) +
   geom_point(size = 3) +
@@ -75,6 +82,7 @@ hypertension_plot <- ggplot(combined_hypertension_summary_diff, aes(x = diff, y 
   theme(plot.title = element_text(hjust = 0.5), plot.subtitle = element_text(hjust = 0.5), axis.text.x = element_text(angle = 45, hjust = 1))
 #Here the scales_x_continuous() function changes our y axis (as we have used coord_flip()) to non-scientific notation.
 #geom_segment() was used to create the lollipop sticks on the graph.
+
 hypertension_plot
 ```
 
@@ -91,6 +99,7 @@ hypertension_table <- combined_hypertension_summary_diff %>%
   summary_rows(columns = diff, fns = list("Total Difference" = ~sum(.)), formatter = fmt_number, decimals = 0) %>%
   grand_summary_rows(columns = diff, fns = list("Overall Difference" = ~sum(.)), formatter = fmt_number, decimals = 0)
 #Here formatter within summary and grand summary rows keeps the "," separators between numbers, but decimal has to be added to each function separately.
+
 hypertension_table
 ```
 
@@ -99,23 +108,28 @@ From this table, you can see the number of prescriptions in a month for hyperten
 ```{r second, results='hide', message=FALSE, warning=FALSE}
 pop_health_board <- load_clean_data("https://www.opendata.nhs.scot/dataset/7f010430-6ce1-4813-b25c-f7f335bdc4dc/resource/27a72cc8-d6d8-430c-8b4f-3109a9ceadb1/download/hb2019_pop_est_14102024.csv")
 #Here is the data for population size per Health Board by age.
+
 pop_health_board_filtered <- pop_health_board %>% 
   select(year, hb, all_ages) %>% 
   filter(year == "2019" | year == "2022")
 health_board_spatial_data <- st_read(here("data","NHS_healthboards_2019.shp")) %>% 
   clean_names()
 #Here is the spacial data for Health Boards in Scotland. It has to be downloaded first before it can be read, but you can access it here: https://spatialdata.gov.scot/geonetwork/srv/api/records/f12c3826-4b4b-40e6-bf4f-77b9ed01dc14
+
 total_hypertension_prescriptions <- combined_hypertension_summary %>%  group_by(hb_name, year) %>%
   summarize(total_paid_quantity_all_drugs = sum(total_paid_quantity)) 
 #Combines all drug prescriptions.
+
 total_hypertension_prescriptions <- total_hypertension_prescriptions %>%
   mutate(hb_name = str_remove(hb_name, "^NHS\\s"))
 #Used str_remove to remove "NHS " from the total_hypertension_prescriptions Health Boards variable, as this prefix is not present in the spatial data.
+
 combined_spatial_data <- health_board_spatial_data %>% 
   full_join(pop_health_board_filtered, by = c("hb_code" = "hb")) %>%
   full_join(total_hypertension_prescriptions, by = c("hb_name" = "hb_name","year" = "year")) %>%
   mutate(prescriptions_per_capita = total_paid_quantity_all_drugs / all_ages)
 #Creates a prescriptions per capita column.
+
 ```
 Now that the number of *hypertension prescriptions per capita* in each health board has been combined with spacial data, a plot can be created.
 ```{r plot 2, fig.dim = c(8,6), message=FALSE, warning=FALSE}
@@ -131,6 +145,7 @@ hypertension_spatial
 ```
 
 ### Plot Results
+
 This plot indicates that while hypertension prescriptions increased the most in NHS Lothian and NHS Greater Glasgow and Clyde, this was proportional to the population compared to the rest of Scotland. From 2019 to 2022, there seems to be an increase of nearly *2 prescriptions per capita per month*, which is a concerning trend.
 Interestingly, the areas with the highest amount of hypertension prescriptions per capita seem to be less well populated areas. Perhaps, as hypertension is an *age-related disease*, these areas might have aging populations. This would be a logical next step to explore using the data we already have.
 
