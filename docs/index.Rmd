@@ -2,6 +2,7 @@
 title: "Impact of the COVID-19 Pandemic on Hypertension Prescriptions Across Scotland"
 author: "Evie Andrewes"
 date: "`r Sys.Date()`"
+bibliography: references.bib
 output: 
   html_document:
     theme: flatly
@@ -9,16 +10,16 @@ output:
     toc: true
     toc_float: true
     number_sections: true
-    code_folding: hide
+    code_folding: show
 ---
 
-From the 2011 to the 2022 census, there was an additional 80,700 people in Scotland who reported bad or very bad health. This is thought to be due to an *aging population.* One of the most common age-related diseases is hypertension (high blood pressure). This report will aim to deduce if during the COVID-19 pandemic there was a *significant increase* in prescriptions for hypertension across Scotland.
+From the 2011 to the 2022 census, there was an additional **80,700** people in Scotland who reported bad or very bad health. This is thought to be due to an *aging population* [@census]. One of the most common age-related diseases is hypertension, or high blood pressure, [@hypertension]. This report will aim to deduce if during the COVID-19 pandemic there was a *significant increase* in prescriptions for hypertension across Scotland.
 
 ## Hypertension Perscriptions Across Scotland 
 
 ### First Steps
 
-Before we start exploring prescriptions for hypertension, let's load in the libraries we will need.
+Before we start exploring prescriptions for hypertension, let's load in the libraries needed.
 
 ```{r setup,results='hide',message=FALSE, warning=FALSE}
 library(tidyverse)
@@ -30,7 +31,7 @@ library(sf)
 
 ### Exploring and Filtering our Data
 
-To begin, let's look at the number of prescriptions of common hypertension medications, like doxazosin, amlodipine, bisoprolol and atenolol, in a month for each health board in Scotland pre-pandemic (August 2019) and post-pandemic (August 2022).
+To begin, let's look at the number of prescriptions of common hypertension medications, like doxazosin, amlodipine, bisoprolol and atenolol [@hypertension], in a month for each health board in Scotland pre-pandemic (August 2019) and post-pandemic (August 2022).
 
 ```{r first, results='hide', message=FALSE, warning=FALSE}
 
@@ -73,9 +74,9 @@ combined_hypertension_summary <- joined_datasets %>%
 
 ```
 
-The prescription and health board data has been filtered to show the number of each hypertension medication for each health board in August 2019 and August 2022. Now let's plot a lollipop chart that shows **the difference between the number of prescriptions in August 2019 and August 2022** to see how they've changed.
+The prescription and health board data has been filtered to show the number of each hypertension medication for each health board in August 2019 and August 2022. Now let's plot a lollipop chart that shows *the difference between the number of prescriptions* in August 2019 and August 2022 to see how they've changed.
 
-```{r plot 1, fig.dim = c(8, 6), fig.cap = "Lollipop Chart showing Difference in Hypertension Perscriptions in a Month from 2019 to 2022 across Scotland", message=FALSE, warning=FALSE}
+```{r plot 1, fig.dim = c(8, 6), message=FALSE, warning=FALSE}
 combined_hypertension_summary_diff <- combined_hypertension_summary %>%
   group_by(hb_name, drug_type) %>%
   pivot_wider(names_from = year, values_from = total_paid_quantity) %>%
@@ -96,9 +97,9 @@ hypertension_plot
 
 ### Chart Results
 
-All of the drugs show a significant increase in prescriptions from 2019 to 2022 **apart from atenolol**. This is because atenolol and bisoprolol are both beta-blockers, but bisoprolol has shown to be more heart specific and therefore it has less side effects. This means that many providers have been switching patients to bisoprolol in recent years. There is an especially significant increase in hypertension prescriptions in *NHS Greater Glasgow and Clyde and NHS Lothian*, most likely due to these areas being well-populated. Let's take a clearer look at the data from these areas by displaying it in a table.
+All of the drugs show a significant increase in prescriptions from 2019 to 2022 *apart from atenolol*. This is because atenolol and bisoprolol are both beta-blockers, but bisoprolol has shown to be more heart specific and therefore it has less side effects. This means that many providers have been switching patients to bisoprolol in recent years [@betablockers]. There is an especially significant increase in hypertension prescriptions in *NHS Greater Glasgow and Clyde and NHS Lothian.* Let's take a clearer look at the data from these areas by displaying it in a table.
 
-```{r table 1, fig.dim = c(8, 6), fig.cap = "Table showing Difference in Hypertension Perscriptions in a month from 2019 to 2022 in NHS Lothian and NHS Greater Glasgow and Clyde", message=FALSE, warning=FALSE}
+```{r table 1, fig.dim = c(8, 6), message=FALSE, warning=FALSE}
 
 hypertension_table <- combined_hypertension_summary_diff %>%
   filter(hb_name %in% c("NHS Lothian", "NHS Greater Glasgow and Clyde")) %>%
@@ -120,9 +121,9 @@ hypertension_table
 
 ### Table Results
 
-From this table, we can see the number of prescriptions in a month for hypertension has increased by **600,000** from August 2019 to August 2022 in NHS Lothian and Greater Glasgow and Clyde alone. This indicates a huge increase in hypertension prescriptions over the COVID-19 pandemic in these areas. 
+From this table, you can see the number of prescriptions in a month for hypertension has increased by **600,000** from August 2019 to August 2022 in NHS Lothian and Greater Glasgow and Clyde alone. This indicates a huge increase in hypertension prescriptions over the COVID-19 pandemic in these areas. 
 
-However, we also know these areas are very well populated, so we don't know how *proportional* this increase is to the general population. Let's load in some data about population size per health board, and create a spatial plot to visualize this:
+However, it is also known these areas are very well populated within Scotland, so it is unknown how *proportional* this increase is to the general population. Let's load in some data about population size per health board, and create a spatial plot to visualize this:
 
 ```{r second, results='hide', message=FALSE, warning=FALSE}
 
@@ -147,7 +148,7 @@ combined_spatial_data <- health_board_spatial_data %>%
   mutate(prescriptions_per_capita = total_paid_quantity_all_drugs / all_ages)
 ```
 
-Now that we have the number of *hypertension prescriptions per capita* in each health board, lets plot our data:
+Now that the number of *hypertension prescriptions per capita* in each health board has been combined with spacial data, a plot can be created.
 
 ```{r plot 2, fig.dim = c(8,6), message=FALSE, warning=FALSE}
 
@@ -156,9 +157,7 @@ ggplot(data = combined_spatial_data) +
   scale_fill_viridis_c(name = "Prescriptions per Capita") +
   facet_wrap(~ year) +
   theme_void() +
-  labs(title = "Hypertension Prescriptions per Capita per Month",
-       subtitle = "Health Boards in Scotland (August 2019 & August 2022)",
-       caption = "Data source: NHS Scotland") +
+  labs(title = "Hypertension Prescriptions per Capita per Month", subtitle = "Health Boards in Scotland (August 2019 & August 2022)") +
   theme(legend.position = "right", plot.title = element_text(hjust = 0.5), plot.subtitle = element_text(hjust = 0.5))
 
 ```
@@ -167,12 +166,5 @@ ggplot(data = combined_spatial_data) +
 
 Generative AI was used only if internet research could not help to identify a new technique not already used in class. For example, to show how to use case_when() to combine all prescriptions of a medication type. It was also used for troubleshooting if code errors could not be identified using internet research. No code was directly copied from generative AI.
 
-References:
+## References
 
-https://www.nhsinform.scot/illnesses-and-conditions/cardiovascular-disease/risk-factors-for-cardiovascular-disease/high-blood-pressure-hypertension/
-
-https://www.scotlandscensus.gov.uk/2022-results/scotland-s-census-2022-health-disability-and-unpaid-care/
-
-https://www.opendata.nhs.scot/dataset/prescriptions-in-the-community/resource/49fa5784-be06-4015-bc6d-9b5db8726473
-
-https://www.bhf.org.uk/informationsupport/heart-matters-magazine/medical/ask-the-experts/beta-blocker-swap
