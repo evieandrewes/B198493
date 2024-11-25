@@ -142,7 +142,7 @@ hypertension_spatial
 ```
 
 ### Plot Results
-This plot indicates that while hypertension prescriptions increased the most in NHS Lothian and NHS Greater Glasgow and Clyde, this was proportional to the population compared to the rest of Scotland. From August 2019 to August 2022, there seems to be an increase of nearly *2 prescriptions per capita per month*, which is a concerning trend.
+This plot indicates that while hypertension prescriptions increased the most in NHS Lothian and NHS Greater Glasgow and Clyde, this was proportional to the population compared to the rest of Scotland. From 2019 to 2022, there seems to be an increase of nearly *2 prescriptions per capita per month*, which is a concerning trend.
 Interestingly, the areas with the highest amount of hypertension prescriptions per capita seem to be less well populated areas. Perhaps, as hypertension is an *age-related disease*, these areas might have aging populations. This would be a logical next step to explore using the data we already have.
 
 ## Conclusion
