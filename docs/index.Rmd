@@ -90,33 +90,27 @@ hypertension_table <- combined_hypertension_summary_diff %>%
   fmt_number(n_sigfig = 4, sep_mark = ",", decimals = 0) %>% 
   summary_rows(columns = diff, fns = list("Total Difference" = ~sum(.)), formatter = fmt_number, decimals = 0) %>%
   grand_summary_rows(columns = diff, fns = list("Overall Difference" = ~sum(.)), formatter = fmt_number, decimals = 0)
-#Here formatter within summary and grand summary rows keeps the "," separators between numbers, but decimal has to be added to each function separately
+#Here formatter within summary and grand summary rows keeps the "," separators between numbers, but decimal has to be added to each function separately.
 hypertension_table
 ```
 
 ### Table Results
 From this table, you can see the number of prescriptions in a month for hypertension has increased by **600,000** from August 2019 to August 2022 in NHS Lothian and Greater Glasgow and Clyde alone. This indicates a huge increase in hypertension prescriptions over the COVID-19 pandemic in these areas. However, it is also known these areas are very well populated within Scotland, so it is unknown how *proportional* this increase is to the general population. Let's load in some data about population size per health board, and use spatial data to visualize this:
 ```{r second, results='hide', message=FALSE, warning=FALSE}
-
 pop_health_board <- load_clean_data("https://www.opendata.nhs.scot/dataset/7f010430-6ce1-4813-b25c-f7f335bdc4dc/resource/27a72cc8-d6d8-430c-8b4f-3109a9ceadb1/download/hb2019_pop_est_14102024.csv")
 #Here is the data for population size per Health Board by age.
-
 pop_health_board_filtered <- pop_health_board %>% 
   select(year, hb, all_ages) %>% 
   filter(year == "2019" | year == "2022")
-
 health_board_spatial_data <- st_read(here("data","NHS_healthboards_2019.shp")) %>% 
   clean_names()
 #Here is the spacial data for Health Boards in Scotland. It has to be downloaded first before it can be read, but you can access it here: https://spatialdata.gov.scot/geonetwork/srv/api/records/f12c3826-4b4b-40e6-bf4f-77b9ed01dc14
-
 total_hypertension_prescriptions <- combined_hypertension_summary %>%  group_by(hb_name, year) %>%
   summarize(total_paid_quantity_all_drugs = sum(total_paid_quantity)) 
 #Combines all drug prescriptions.
-
 total_hypertension_prescriptions <- total_hypertension_prescriptions %>%
   mutate(hb_name = str_remove(hb_name, "^NHS\\s"))
 #Used str_remove to remove "NHS " from the total_hypertension_prescriptions Health Boards variable, as this prefix is not present in the spatial data.
-
 combined_spatial_data <- health_board_spatial_data %>% 
   full_join(pop_health_board_filtered, by = c("hb_code" = "hb")) %>%
   full_join(total_hypertension_prescriptions, by = c("hb_name" = "hb_name","year" = "year")) %>%
@@ -125,7 +119,6 @@ combined_spatial_data <- health_board_spatial_data %>%
 ```
 Now that the number of *hypertension prescriptions per capita* in each health board has been combined with spacial data, a plot can be created.
 ```{r plot 2, fig.dim = c(8,6), message=FALSE, warning=FALSE}
-
 hypertension_spatial <- ggplot(data = combined_spatial_data) +
   geom_sf(aes(fill = prescriptions_per_capita)) +
   scale_fill_viridis_c(name = "Prescriptions per Capita") +
@@ -133,9 +126,7 @@ hypertension_spatial <- ggplot(data = combined_spatial_data) +
   theme_void() +
   labs(title = "Hypertension Prescriptions per Capita per Month", subtitle = "Health Boards in Scotland (August 2019 & August 2022)", caption = "Data sources: Scottish Government, Public Health Scotland") +
   theme(legend.position = "right", plot.title = element_text(hjust = 0.5), plot.subtitle = element_text(hjust = 0.5))
-
 #scale_fill_viridis_c() gives the plot a continuous scale, which is a better representation of our data as hypertension prescriptions per capita per month is a continuous variable.
-
 hypertension_spatial
 ```
 
