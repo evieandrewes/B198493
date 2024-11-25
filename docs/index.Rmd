@@ -29,7 +29,7 @@ library(here)
 library(sf)
 ```
 
-To begin, let's look at the number of prescriptions of common hypertension medications, like doxazosin, amlodipine, bisoprolol and atenolol [@hypertension] [@betablockers], in a month for each health board in Scotland pre-pandemic (August 2019) and post-pandemic (August 2022).
+To begin, let's look at the number of prescriptions of common hypertension medications like doxazosin, amlodipine, bisoprolol and atenolol [@hypertension] [@betablockers], in a month for each health board in Scotland pre-pandemic (August 2019) and post-pandemic (August 2022).
 
 ```{r first, results='hide', message=FALSE, warning=FALSE}
 
