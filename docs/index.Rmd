@@ -17,16 +17,14 @@ output:
 From the 2011 to the 2022 census, there was an additional **80,700** people in Scotland who reported bad or very bad health. This is thought to be due to an *aging population* [@census]. One of the most common age-related diseases is hypertension, or high blood pressure, [@hypertension]. This report will aim to deduce if during the COVID-19 pandemic there was a *significant increase* in prescriptions for hypertension across Scotland.
 
 ## Data Exploration and Key Results
-Before we start exploring prescriptions for hypertension, let's load in the libraries needed.
-```{r setup,results='hide',message=FALSE, warning=FALSE}
+To begin, let's look at the number of prescriptions of common hypertension medications like doxazosin, amlodipine, bisoprolol and atenolol [@hypertension] [@betablockers], in a month for each health board in Scotland pre-pandemic (August 2019) and post-pandemic (August 2022).
+```{r first, results='hide', message=FALSE, warning=FALSE}
 library(tidyverse)
 library(janitor)
 library(gt) 
 library(here)
 library(sf)
-```
-To begin, let's look at the number of prescriptions of common hypertension medications like doxazosin, amlodipine, bisoprolol and atenolol [@hypertension] [@betablockers], in a month for each health board in Scotland pre-pandemic (August 2019) and post-pandemic (August 2022).
-```{r first, results='hide', message=FALSE, warning=FALSE}
+#Libraries for project
 `load_clean_data` <- function(url) {
   read_csv(url) %>%
     clean_names()} 
